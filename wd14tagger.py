@@ -41,6 +41,9 @@ known_models = list(config["models"].keys())
 log("Available ORT providers: " + ", ".join(ort.get_available_providers()), "DEBUG", True)
 log("Using ORT providers: " + ", ".join(defaults["ortProviders"]), "DEBUG", True)
 
+# 添加模型缓存
+_model_cache = {}
+
 def get_installed_models():
     models = filter(lambda x: x.endswith(".onnx"), os.listdir(models_dir))
     models = [m for m in models if os.path.exists(os.path.join(models_dir, os.path.splitext(m)[0] + ".csv"))]
@@ -55,7 +58,10 @@ async def tag(image, model_name, threshold=0.35, character_threshold=0.85, exclu
         await download_model(model_name, client_id, node)
 
     name = os.path.join(models_dir, model_name + ".onnx")
-    model = InferenceSession(name, providers=defaults["ortProviders"])
+    # 使用缓存的模型实例
+    if model_name not in _model_cache:
+        _model_cache[model_name] = InferenceSession(name, providers=defaults["ortProviders"])
+    model = _model_cache[model_name]
 
     input = model.get_inputs()[0]
     height = input.shape[1]
